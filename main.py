@@ -6,6 +6,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.actions.wheel_input import ScrollOrigin
 import time
+import reviews_scaper
 
 # inputs
 cuisine = "italian"
@@ -42,33 +43,65 @@ priceChoice.click()
 doneButton = driver.find_element(by=By.CSS_SELECTOR, value="[jsaction='actionmenu.done; keydown:actionmenu.done']")
 doneButton.click()
 
-# get restaurant list
-def scroll_for_duration(driver, seconds):
-    divSideBar = driver.find_element(by=By.CSS_SELECTOR, value=f"[aria-label='Results for {cuisine} near {town}, {state}']")
 
+# get restaurant list
+def scroll_for_duration(seconds, origin_element):
     end_time = time.time() + seconds
     while time.time() < end_time:
         # Scroll down using the keyboard arrow down key
-        divSideBar.send_keys(Keys.PAGE_DOWN)
+        origin_element.send_keys(Keys.PAGE_DOWN)
 
-scroll_for_duration(driver, 10)
+
+divSideBar = driver.find_element(by=By.CSS_SELECTOR, value=f"[aria-label='Results for {cuisine} near {town}, {state}']")
+scroll_for_duration(2, divSideBar)
 
 restaurantList = []
 restaurants = driver.find_elements(by=By.CLASS_NAME, value="TFQHme")
+restaurants = restaurants[:15] if len(restaurants) > 15 else restaurants
 for restaurant in restaurants:
     # Get the next sibling div
     next_sibling_div = restaurant.find_element(By.XPATH, "following-sibling::div")
-    restaurantList.append(next_sibling_div.get_attribute("innerHTML"))
+    anchor = next_sibling_div.find_element(by=By.TAG_NAME, value="a")
+    # list of dictionary of (name : dictionary)
+    restaurantList.append({anchor.get_attribute("aria-label"): {
+        "link": anchor.get_attribute("href")}
+    })
 
-print(restaurantList)
-print(len(restaurantList))
+# get stats for each restaurant
+for restaurant in restaurantList:
+    for name, details in restaurant.items():
+        driver.get(details["link"])
 
-# get number of reviews, reviews, rating, contains keywords, get price range, location
-# get address, google map link, name
+        # get rating
+        rating = driver.find_element(By.CSS_SELECTOR, f"[aria-label*=' stars']").get_attribute("aria-label")
+        print(rating)
 
-# get instagram hashtag post data
-# get number of instagram posts for the restaurant
+        # get review count
+        reviewCount = driver.find_element(By.CSS_SELECTOR, f"[aria-label*=' reviews']").get_attribute("aria-label")
+        print(reviewCount)
 
-# get number of news mentions
+        # get price
+        price = driver.find_element(By.CSS_SELECTOR, f"[aria-label*='Price: ']").get_attribute("aria-label")
+        print(price)
+
+        # get top < 50 reviews for keywords
+        reviews = reviews_scaper.get_reviews(driver, f"{name} {town} {state}")
+        print(reviews)
+        print(len(reviews))
+
+    # get number of reviews, reviews, rating, contains keywords, get price range, location
+
+    # get number of bookings
+
+    # export data in CSV
+
+    # create API
+
+    # create restaurant recommender website
+
+    # create graph to show how the rating and reviews change over time for restaurants
+    # for top NYC restaurants
+    # use Wayback Machine
+
 
 
